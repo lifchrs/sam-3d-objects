@@ -92,6 +92,36 @@ class Inference:
         self._pipeline: InferencePipelinePointMap = instantiate(config)
 
     def merge_mask_to_rgba(self, image, mask):
+        if isinstance(image, list):
+            # Batch mode
+            if mask is None:
+                mask = [None] * len(image)
+            
+            batched_images = []
+            for img, m in zip(image, mask):
+                # Ensure numpy
+                if not isinstance(img, np.ndarray):
+                    img = np.array(img)
+                if m is not None:
+                    if not isinstance(m, np.ndarray):
+                        m = np.array(m)
+                    m = m.astype(np.uint8) * 255
+                    if m.ndim == 2:
+                        m = m[..., None]
+                    rgba = np.concatenate([img[..., :3], m], axis=-1)
+                else:
+                    # If mask is None, assume img is RGBA or just RGB (no transparency)
+                    # But pipeline expects RGBA usually.
+                    if img.shape[-1] == 3:
+                         # Append opaque alpha
+                         alpha = np.full(img.shape[:2] + (1,), 255, dtype=np.uint8)
+                         rgba = np.concatenate([img, alpha], axis=-1)
+                    else:
+                         rgba = img
+                batched_images.append(rgba)
+            return np.stack(batched_images, axis=0) # (B, H, W, 4)
+        
+        # Single image mode
         mask = mask.astype(np.uint8) * 255
         mask = mask[..., None]
         # embed mask in alpha channel
@@ -104,6 +134,8 @@ class Inference:
         mask: Optional[Union[None, Image.Image, np.ndarray]],
         seed: Optional[int] = None,
         pointmap=None,
+        stage1_inference_steps=None,
+        stage2_inference_steps=None,
     ) -> dict:
         image = self.merge_mask_to_rgba(image, mask)
         return self._pipeline.run(
@@ -115,7 +147,8 @@ class Inference:
             with_texture_baking=False,
             with_layout_postprocess=False,
             use_vertex_color=True,
-            stage1_inference_steps=None,
+            stage1_inference_steps=stage1_inference_steps,
+            stage2_inference_steps=stage2_inference_steps,
             pointmap=pointmap,
         )
 

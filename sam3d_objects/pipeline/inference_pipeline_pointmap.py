@@ -308,6 +308,7 @@ class InferencePipelinePointMap(InferencePipeline):
             )
             point_map_tensor["intrinsics"] = intrinsics_result["intrinsics"]
         else:
+            # Depth model provided intrinsics, use them
             point_map_tensor["intrinsics"] = intrinsics
 
         points_tensor = points_tensor.permute(2, 0, 1)
@@ -506,6 +507,7 @@ class InferencePipelinePointMap(InferencePipeline):
                 **outputs,
                 "pointmap": pts.cpu().permute((1, 2, 0)),  # HxWx3
                 "pointmap_colors": pts_colors.cpu().permute((1, 2, 0)),  # HxWx3
+                "intrinsics": pointmap_dict.get("intrinsics", None),  # Add intrinsics to output
             }
 
     @staticmethod

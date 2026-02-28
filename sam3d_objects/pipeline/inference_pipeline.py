@@ -541,6 +541,13 @@ class InferencePipeline:
             f"Postprocessing mesh with option with_mesh_postprocess {with_mesh_postprocess}, with_texture_baking {with_texture_baking}..."
         )
         if "mesh" in outputs:
+            # DEBUG: Save original mesh centroid before to_glb() processing
+            import numpy as np
+            mesh_original = outputs["mesh"][0]
+            mesh_vertices_original = mesh_original.vertices.float().cpu().numpy()
+            mesh_centroid_original_zup = mesh_vertices_original.mean(axis=0)
+            outputs["mesh_canonical_zup_centroid"] = mesh_centroid_original_zup
+
             glb = postprocessing_utils.to_glb(
                 outputs["gaussian"][0],
                 outputs["mesh"][0],
